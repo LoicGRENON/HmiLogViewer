@@ -1,0 +1,10 @@
+<RCC>
+	<qresource>
+		<file>ressources/HmiLogViewer_256.png</file>
+		<file>ressources/LogoEriEurosonics.png</file>
+		<file>ressources/Oxygen-Icons.org-Oxygen-Actions-document-new.ico</file>
+		<file>ressources/Oxygen-Icons.org-Oxygen-Actions-document-open-folder.ico</file>
+		<file>ressources/Oxygen-Icons.org-Oxygen-Actions-document-revert.ico</file>
+		<file>ressources/Oxygen-Icons.org-Oxygen-Actions-document-save.ico</file>
+	</qresource>
+</RCC>
