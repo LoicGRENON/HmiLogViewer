@@ -25,6 +25,7 @@ class HmiLogViewer(QtGui.QMainWindow):
         
         self.aboutDialog = MyAboutDialog(self)
 
+        self.model = None
         self.header = [u"Date",
                        u"Version",
                        u"Status",
@@ -48,7 +49,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                                self.openFile)
         QtCore.QObject.connect(self.ui.actionAddFile,
                                QtCore.SIGNAL("triggered()"),
-                               self.appendFile)
+                               lambda: self.openFile(True))
         QtCore.QObject.connect(self.ui.actionClose,
                                QtCore.SIGNAL("triggered()"),
                                self.closeFile)
@@ -64,32 +65,21 @@ class HmiLogViewer(QtGui.QMainWindow):
                                self.openFile)
         QtCore.QObject.connect(self.ui.toolBtnAppend,
                                QtCore.SIGNAL("clicked()"),
-                               self.appendFile)
+                               lambda: self.openFile(True))
         QtCore.QObject.connect(self.ui.toolBtnSave,
                                QtCore.SIGNAL("clicked()"),
                                self.saveFile)
         
-    def openFile(self):
+    def openFile(self, append=False):
         """
-        Ouvrir un seul fichier CSV à la fois
+        Ouvrir un fichier CSV
+        :param append: Do not close previous file if True
         """
-        sFilepath = self.openFileDialog()
-        if os.path.isfile(sFilepath):
-            self.closeFile()
-            self.parseLogFile(str(sFilepath))
-            self.ui.actionClose.setEnabled(True)
-            self.ui.actionAddFile.setEnabled(True)
-            self.ui.toolBtnAppend.setEnabled(True)
-            self.ui.actionSaveAs.setEnabled(True)
-            self.ui.toolBtnSave.setEnabled(True)
-    
-    def appendFile(self):
-        """
-        Ouvrir plusieurs fichiers CSV à la suite
-        """
-        sFilepath = self.openFileDialog()
-        if os.path.isfile(sFilepath):
-            self.parseLogFile(str(sFilepath))
+        sFilePath = self.openFileDialog()
+        if os.path.isfile(sFilePath):
+            if not append:
+                self.closeFile()
+            self.parseLogFile(str(sFilePath))
             self.ui.actionClose.setEnabled(True)
             self.ui.actionAddFile.setEnabled(True)
             self.ui.toolBtnAppend.setEnabled(True)
@@ -106,6 +96,7 @@ class HmiLogViewer(QtGui.QMainWindow):
         """
         Effacer les données des fichiers ouverts
         """
+        self.model = None
         self.setModel()
         self.ui.actionSaveAs.setEnabled(False)
         self.ui.toolBtnSave.setEnabled(False)
@@ -204,13 +195,13 @@ class HmiLogViewer(QtGui.QMainWindow):
         tv.resizeRowsToContents()
                 
     def saveFile(self):
-        sFilepath = QtGui.QFileDialog.getSaveFileName(self.ui.centralwidget,
+        sFilePath = QtGui.QFileDialog.getSaveFileName(self.ui.centralwidget,
                                                       u"Choose a log file",
                                                       QtCore.QString(),
                                                       "CSV (*.csv)")
-        if sFilepath:
+        if sFilePath:
             try:
-                with open(str(sFilepath), "wb") as f:
+                with open(str(sFilePath), "wb") as f:
                     writer = csv.writer(f, delimiter=";")
                     writer.writerow([s.encode("cp1255") for s in self.header])
                     for row in range(0, self.model.rowCount()):
