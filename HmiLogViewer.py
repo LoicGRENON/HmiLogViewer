@@ -10,11 +10,12 @@ from PyQt4 import QtCore, QtGui
 from ui.main import Ui_MainWindow
 from ItemModels import LogReaderTableModel
 from MyAboutDialog import MyAboutDialog
+from MyExceptions import *
 import codecs
 import csv
-import re
 import sys
 import os
+import yaml
 
 
 class HmiLogViewer(QtGui.QMainWindow):
@@ -26,22 +27,8 @@ class HmiLogViewer(QtGui.QMainWindow):
         self.aboutDialog = MyAboutDialog(self)
 
         self.model = None
-        self.header = [u"Date",
-                       u"Version",
-                       u"Status",
-                       u"Turntable plate",
-                       u"Riveting Depth\n(mm)",
-                       u"Riveting low limit\n(mm)",
-                       u"Riveting high limit\n(mm)",
-                       u"Riveting time\n(s)",
-                       u"Riveting pressure\n(bar)",
-                       u"Loop 1 - SP\n(°C)",
-                       u"Loop 1 - PV\n(°C)",
-                       u"Loop 2 - SP\n(°C)",
-                       u"Loop 2 - PV\n(°C)",
-                       u"Loop 3 - SP\n(°C)",
-                       u"Loop 3 - PV\n(°C)",
-                       u"Melting time\n(s)"]
+        self.header = None
+        self.projectId = ""
         
         # Menu entries actions
         QtCore.QObject.connect(self.ui.actionOpen,
@@ -69,7 +56,31 @@ class HmiLogViewer(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.toolBtnSave,
                                QtCore.SIGNAL("clicked()"),
                                self.saveFile)
-        
+
+    def getHeaders(self, projectId=""):
+        """
+
+        :param projectId: str
+        :return: a list of headers
+        """
+        try:
+            # TODO: Change file path
+            with open("config.yaml", "r") as f:
+                data = yaml.safe_load(f)
+                for d in data['LogData']:
+                    if projectId == d['projectId']:
+                        return [u"{}\n({})".format(item['name'], item['unit'])
+                                if item['unit'] else
+                                u"{}".format(item['name'])
+                                for item in d['items']]
+                raise ProjectIdError()
+        except (IOError, OSError, UnicodeError) as e:
+            QtGui.QMessageBox.critical(self.ui.centralwidget,
+                                       u"Config loading failed",
+                                       u"Unable to read config file.\nReturned error is :\n%s" % e,
+                                       QtGui.QMessageBox.Ok)
+            return []
+
     def openFile(self, append=False):
         """
         Ouvrir un fichier CSV
@@ -97,6 +108,7 @@ class HmiLogViewer(QtGui.QMainWindow):
         Effacer les données des fichiers ouverts
         """
         self.model = None
+        self.projectId = ""
         self.setModel()
         self.ui.actionSaveAs.setEnabled(False)
         self.ui.toolBtnSave.setEnabled(False)
@@ -127,22 +139,7 @@ class HmiLogViewer(QtGui.QMainWindow):
         Le fichier de journalisation est composé de 3 champs séparés par des tabulations :
         1 : Date au format jj/mm/aaaa
         2 : Heure au format HH:MM:SS
-        3 : Le message composé de 15 champs séparés par des points virgules :
-            3.1  : Le numéro de version de pièce
-            3.2  : L'état de la pièce (0:mauvaise / 1:bonne)
-            3.3  : Le posage sur lequel la pièce a été assemblée (1: posage 1 / 2: posage 2)
-            3.4  : La profondeur de bouterollage mesurée (0.1mm)
-            3.5  : La limite mini de bouterollage (0.1mm)
-            3.6  : La limite maxi de bouterollage (0.1mm)
-            3.7  : Le temps de bouterollage (0.1s)
-            3.8  : La pression de bouterollage (0.1bar)
-            3.9  : La consigne de température de la boucle 1 (0.1°C)
-            3.10 : La température mesurée de la boucle 1 (0.1°C)
-            3.11 : La consigne de température de la boucle 2 (0.1°C)
-            3.12 : La température mesurée de la boucle 2 (0.1°C)
-            3.13 : La consigne de température de la boucle 3 (0.1°C)
-            3.14 : La température mesurée de la boucle 3 (0.1°C)
-            3.15 : Le temps de fusion (0.1s)
+        3 : Le message composé de N champs séparés par des points virgules
 
             :param filename: file to be parsed
         """
@@ -151,46 +148,66 @@ class HmiLogViewer(QtGui.QMainWindow):
             self.setModel()
 
         try:
-            with codecs.open(filename, 'r', 'utf-16') as f:
-                for line in f:
+            with codecs.open(filename, "r", "utf-16") as f:
+                for lineIdx, line in enumerate(f):
                     if line.endswith("\r\n"):
                         line = line[:-2]
                     if line.endswith("\n"):
                         line = line[:-1]
-                        
-                    lineFields = re.split(r'\t+', line)
-                    # On contrôle que la ligne comprend le nombre de champs attendus
+
+                    # Check for projectId value
+                    if lineIdx == 0:
+                        if self.projectId == "":
+                            self.projectId = line
+                            try:
+                                self.header = self.getHeaders(line)
+                            except ProjectIdError:
+                                QtGui.QMessageBox.warning(self.ui.centralwidget,
+                                                          u"Config cannot be found",
+                                                          u"A proper config cannot be found for this file",
+                                                          QtGui.QMessageBox.Ok)
+                                break
+                            self.setModel()
+                        elif line != self.projectId:
+                            QtGui.QMessageBox.warning(self.ui.centralwidget,
+                                                      u"Wrong log file",
+                                                      u"The log file you are trying to open seems to be from "
+                                                      u"a different project than the last opened file.\n"
+                                                      u"Please close it before opening another.",
+                                                      QtGui.QMessageBox.Ok)
+                            break
+
+                    lineFields = line.split()
+                    # Check if lineField has correct field number : 1: Date / 2: Time / 3: Message
                     if len(lineFields) == 3:
-                        # Le message est composé de 15 champs séparés par des points-virgule
-                        # -> on les extrait et contrôle que le nombre de champs est correct
-                        fields = lineFields[2].split(";")
-                        if len(fields) == 15:
+                        # Le message est composé de N champs séparés par des points-virgule
+                        # -> on les extrait et contrôle que le nombre de champs est correct par rapport au header
+                        msgFields = lineFields[2].split(";")
+                        if len(msgFields) == len(self.header) - 1:
                             try:
                                 items = [QtGui.QStandardItem((unicode(float(field)/10)))
                                          if idx in range(3, 15) else
                                          QtGui.QStandardItem(field)
-                                         for idx, field in enumerate(fields)]
+                                         for idx, field in enumerate(msgFields)]
                             except (ValueError, UnicodeError):
-                                # En cas d'erreur, on ignore la ligne courante et on passe à la suivante
+                                # Ignore current line in case of error
                                 continue
                             
-                            # On concatène les champs date et heure et on les ajoute en tête de liste
-                            items.insert(0, QtGui.QStandardItem(lineFields[0] + " " + lineFields[1]))
-                            items.append(QtGui.QStandardItem())
+                            # Add date and time values on the top of the list
+                            items.insert(0, QtGui.QStandardItem(" ".join(lineFields[:-1])))
                                 
                             self.model.appendRow(items)
         except (IOError, OSError, UnicodeError) as e:
             QtGui.QMessageBox.critical(self.ui.centralwidget,
-                                       "Opening failed",
-                                       "Failed to open file.\nReturned error is :\n%s" % e,
+                                       u"Opening failed",
+                                       u"Failed to open file.\nReturned error is :\n%s" % e,
                                        QtGui.QMessageBox.Ok)
-        
         self.updateModel()
             
     def updateModel(self):        
         tv = self.ui.tableView
         tv.setModel(self.model)
-        # Redimensionner les lignes et colonnes en fonction du contenu
+        # Resize cells to contents
         tv.resizeColumnsToContents()
         tv.resizeRowsToContents()
                 
@@ -203,19 +220,20 @@ class HmiLogViewer(QtGui.QMainWindow):
             try:
                 with open(str(sFilePath), "wb") as f:
                     writer = csv.writer(f, delimiter=";")
+                    # Write headers
                     writer.writerow([s.encode("cp1255") for s in self.header])
-                    for row in range(0, self.model.rowCount()):
+                    for row in xrange(self.model.rowCount()):
                         itemRow = ["%s" % self.model.item(row, col).data(QtCore.Qt.DisplayRole).toString()
                                    if col == 0 else
                                    self.model.item(row, col).data(QtCore.Qt.DisplayRole).toInt()[0]
                                    if col < 4 else
                                    "%s" % self.model.item(row, col).data(QtCore.Qt.DisplayRole).toReal()[0]
-                                   for col in range(0, self.model.columnCount() - 1)]
+                                   for col in xrange(self.model.columnCount())]
                         writer.writerow(itemRow)
             except (IOError, OSError, UnicodeError) as e:
                 QtGui.QMessageBox.critical(self.ui.centralwidget,
-                                           "Saving failed",
-                                           "Failed to save file.\nReturned error is :\n%s" % e,
+                                           u"Saving failed",
+                                           u"Failed to save file.\nReturned error is :\n%s" % e,
                                            QtGui.QMessageBox.Ok)
 
 

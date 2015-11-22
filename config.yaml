@@ -1,0 +1,79 @@
+LogData:
+    - client: Client name 1
+      projectId: KQ
+      items:
+        - name: Date
+          unit: ~
+          type: str
+          visible: True
+        - name: Version
+          unit: ~
+          type: int
+          visible: True
+        - name: Status
+          unit: ~
+          type: int
+          visible: True
+        - name: Turntable plate
+          unit: ~
+          type: int
+          visible: True
+        - name: Riveting depth
+          unit: mm
+          type: int
+          visible: True
+        - name: Riveting low limit
+          unit: mm
+          type: int
+          visible: True
+        - name: Riveting high limit
+          unit: mm
+          type: int
+          visible: True
+        - name: Riveting time
+          unit: s
+          type: int
+          visible: True
+        - name: Riveting pressure
+          unit: bar
+          type: int
+          visible: True
+        - name: Loop 1 - SP
+          unit: °C
+          type: int
+          visible: True
+        - name: Loop 1 - PV
+          unit: °C
+          type: int
+          visible: True
+        - name: Loop 2 - SP
+          unit: °C
+          type: int
+          visible: True
+        - name: Loop 2 - PV
+          unit: °C
+          type: int
+          visible: True
+        - name: Loop 3 - SP
+          unit: °C
+          type: int
+          visible: True
+        - name: Loop 3 - PV
+          unit: °C
+          type: int
+          visible: True
+        - name: Melting time
+          unit: s
+          type: int
+          visible: True
+    - client: Client name 2
+      projectId: KZ
+      items:
+        - name: Date
+          unit: ~
+          type: str
+          visible: True
+        - name: ~
+          unit: ~
+          type: ~
+          visible: ~
