@@ -8,6 +8,8 @@ Created on 9 juil. 2015
 
 from PyQt4 import QtCore, QtGui
 
+COLOR_ROLE = QtCore.Qt.UserRole
+
 
 class LogReaderTableModel(QtGui.QStandardItemModel):
     def __init__(self, headerData, parent=None, *args):
@@ -21,13 +23,7 @@ class LogReaderTableModel(QtGui.QStandardItemModel):
             if role == QtCore.Qt.TextAlignmentRole:
                 return QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter
             if role == QtCore.Qt.BackgroundRole:
-                # Coloriser les lignes en fonction de l'état de la pièce (3e colonne)
-                # 0: pièce mauvaise => rouge / 1: pièce bonne => vert
-                status = index.sibling(index.row(), 2).data(QtCore.Qt.DisplayRole).toString()
-                if status == "1":
-                    return QtCore.QVariant(QtGui.QColor(54, 193, 26))
-                else:
-                    return QtCore.QVariant(QtGui.QColor(255, 96, 96))
+                return index.data(COLOR_ROLE)
         return QtGui.QStandardItemModel.data(self, index, role)
      
     def headerData(self, col, orientation, role=None):

@@ -8,7 +8,7 @@ Created on 9 juil. 2015
 
 from PyQt4 import QtCore, QtGui
 from ui.main import Ui_MainWindow
-from ItemModels import LogReaderTableModel
+from ItemModels import COLOR_ROLE, LogReaderTableModel
 from MyAboutDialog import MyAboutDialog
 from MyExceptions import *
 import codecs
@@ -78,15 +78,6 @@ class HmiLogViewer(QtGui.QMainWindow):
                             headers.append(u"{}\n({})".format(item['name'], item['unit'])
                                            if item['unit'] else
                                            u"{}".format(item['name']))
-                            try:
-                                if item['type'] == "float":
-                                    itemType = "float"
-                                elif item['type'] == "int":
-                                    itemType = "int"
-                                else:
-                                    itemType = "str"
-                            except KeyError:
-                                itemType = "str"
 
                             try:
                                 decimals = item['decimals']
@@ -108,9 +99,8 @@ class HmiLogViewer(QtGui.QMainWindow):
                             except KeyError:
                                 visible = True
 
-                            cols.append({'type': itemType,
+                            cols.append({'decimals': decimals,
                                          'values': values,
-                                         'decimals': decimals,
                                          'color': color,
                                          'visible': visible})
                         return {'headers': headers,
@@ -123,8 +113,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                                        u"Unable to read config file.\nReturned error is :\n%s" % e,
                                        QtGui.QMessageBox.Ok)
             return {'headers': {},
-                    'cols': {'type': "str",
-                             'decimals': 0,
+                    'cols': {'decimals': 0,
                              'values': {},
                              'color': {},
                              'visible': True}}
@@ -160,6 +149,8 @@ class HmiLogViewer(QtGui.QMainWindow):
         self.setModel()
         self.ui.actionSaveAs.setEnabled(False)
         self.ui.toolBtnSave.setEnabled(False)
+        self.ui.actionAddFile.setEnabled(False)
+        self.ui.toolBtnAppend.setEnabled(False)
         
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
@@ -234,27 +225,34 @@ class HmiLogViewer(QtGui.QMainWindow):
                         if len(msgFields) == len(self.parserConfig['headers']) - 1:
                             items = []
                             for field, fieldConfig in zip(msgFields, self.parserConfig['cols']):
-                                itemType = fieldConfig['type']
                                 decimals = fieldConfig['decimals']
                                 values = fieldConfig['values']
                                 color = fieldConfig['color']
                                 visible = fieldConfig['visible']
 
-                                if itemType == "float":
-                                    items.append(QtGui.QStandardItem((unicode(float(field)/10.0**decimals))))
-                                else:
-                                    if itemType == "int":
-                                        itemValue = int(field)
-                                    else:
-                                        itemValue = field
+                                try:
+                                    evalField = ast.literal_eval(field)
+                                except ValueError:
+                                    evalField = field
 
-                                    try:
-                                        items.append(QtGui.QStandardItem(unicode(values[itemValue])))
-                                    except KeyError:
-                                        items.append(QtGui.QStandardItem(unicode(itemValue)))
-                            
+                                try:
+                                    if decimals != 0:
+                                        item = QtGui.QStandardItem((unicode(float(field)/10.0**decimals)))
+                                    else:
+                                        item = QtGui.QStandardItem(unicode(values[evalField]))
+                                except (ValueError, KeyError):
+                                    item = QtGui.QStandardItem(unicode(field))
+
+                                try:
+                                    item.setData(QtGui.QColor(color[evalField]), COLOR_ROLE)
+                                except (ValueError, KeyError):
+                                    pass
+
+                                items.append(item)
                             # Add date and time values on the top of the list
                             items.insert(0, QtGui.QStandardItem(" ".join(lineFields[:-1])))
+                            # Add extra row for aesthetic reasons
+                            items.append(QtGui.QStandardItem())
                                 
                             self.model.appendRow(items)
         except (IOError, OSError, UnicodeError) as e:
@@ -267,10 +265,14 @@ class HmiLogViewer(QtGui.QMainWindow):
     def updateModel(self):        
         tv = self.ui.tableView
         tv.setModel(self.model)
+        # Hide the last column to not resize it
+        tv.setColumnHidden(self.model.columnCount(), True)
         # Resize cells to contents
         tv.resizeColumnsToContents()
         tv.resizeRowsToContents()
-                
+        # Unhide the last column previously hidden
+        tv.setColumnHidden(self.model.columnCount(), False)
+
     def saveFile(self):
         sFilePath = QtGui.QFileDialog.getSaveFileName(self.ui.centralwidget,
                                                       u"Choose a log file",

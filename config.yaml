@@ -2,80 +2,61 @@ LogData:
     - client: Client name 1
       projectId: KQ
       items:
-        - name: Date
-          unit: ~
-          type: str
-          visible: True
         - name: Version
           unit: ~
-          type: int
           visible: True
         - name: Status
           unit: ~
-          type: int
           visible: True
         - name: Turntable plate
           unit: ~
-          type: int
           visible: True
         - name: Riveting depth
           unit: mm
-          type: int
           decimals: 1
           visible: True
         - name: Riveting low limit
           unit: mm
-          type: int
           decimals: 1
           visible: True
         - name: Riveting high limit
           unit: mm
-          type: int
           decimals: 1
           visible: True
         - name: Riveting time
           unit: s
-          type: int
           decimals: 1
           visible: True
         - name: Riveting pressure
           unit: bar
-          type: int
           decimals: 1
           visible: True
         - name: Loop 1 - SP
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Loop 1 - PV
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Loop 2 - SP
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Loop 2 - PV
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Loop 3 - SP
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Loop 3 - PV
           unit: °C
-          type: int
           decimals: 1
           visible: True
         - name: Melting time
           unit: s
-          type: int
           decimals: 1
           visible: True
     - client: Client name 2
@@ -83,39 +64,31 @@ LogData:
       items:
         - name: Recipe Id
           unit: ~
-          type: int
           visible: True
         - name: Status
           unit: ~
-          type: int
           values: "{0: 'OK', 1: 'NOK'}"
-          color: "{0: 'green', 1: 'red'}"
+          color: "{0: '#36c11a', 1: '#ff6060'}"
           visible: True
         - name: Side
           unit: ~
-          type: int
           values: "{0: 'Left', 1: 'Right'}"
           visible: True
         - name: Welding mode
           unit: ~
-          type: int
           values: "{0: 'Disabled', 1: 'Time', 2: 'Energy', 3: 'Power', 4: 'Absolute', 5: 'Relative'}"
           visible: True
         - name: Time
           unit: s
-          type: float
           decimals: 3
           visible: True
         - name: Power
           unit: W
-          type: int
           visible: True
         - name: Energy
           unit: J
-          type: int
           visible: True
         - name: Depth
           unit: mm
-          type: float
           decimals: 2
           visible: True
