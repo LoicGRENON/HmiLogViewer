@@ -16,6 +16,7 @@ import csv
 import sys
 import os
 import yaml
+import ast
 
 
 class HmiLogViewer(QtGui.QMainWindow):
@@ -27,7 +28,8 @@ class HmiLogViewer(QtGui.QMainWindow):
         self.aboutDialog = MyAboutDialog(self)
 
         self.model = None
-        self.header = None
+        self.parserConfig = {'headers': None,
+                             'cols': None}
         self.projectId = ""
         
         # Menu entries actions
@@ -57,29 +59,75 @@ class HmiLogViewer(QtGui.QMainWindow):
                                QtCore.SIGNAL("clicked()"),
                                self.saveFile)
 
-    def getHeaders(self, projectId=""):
+    def getItemParserConfig(self, projectId=""):
         """
 
         :param projectId: str
-        :return: a list of headers
+        :return: dict
         """
+        projectId = projectId.strip()
         try:
             # TODO: Change file path
             with open("config.yaml", "r") as f:
                 data = yaml.safe_load(f)
                 for d in data['LogData']:
                     if projectId == d['projectId']:
-                        return [u"{}\n({})".format(item['name'], item['unit'])
-                                if item['unit'] else
-                                u"{}".format(item['name'])
-                                for item in d['items']]
+                        headers = ['Date']
+                        cols = []
+                        for item in d['items']:
+                            headers.append(u"{}\n({})".format(item['name'], item['unit'])
+                                           if item['unit'] else
+                                           u"{}".format(item['name']))
+                            try:
+                                if item['type'] == "float":
+                                    itemType = "float"
+                                elif item['type'] == "int":
+                                    itemType = "int"
+                                else:
+                                    itemType = "str"
+                            except KeyError:
+                                itemType = "str"
+
+                            try:
+                                decimals = item['decimals']
+                            except KeyError:
+                                decimals = 0
+
+                            try:
+                                values = ast.literal_eval(item['values'])
+                            except (KeyError, ValueError, SyntaxError):
+                                values = {}
+
+                            try:
+                                color = ast.literal_eval(item['color'])
+                            except (KeyError, ValueError, SyntaxError):
+                                color = {}
+
+                            try:
+                                visible = item['visible']
+                            except KeyError:
+                                visible = True
+
+                            cols.append({'type': itemType,
+                                         'values': values,
+                                         'decimals': decimals,
+                                         'color': color,
+                                         'visible': visible})
+                        return {'headers': headers,
+                                'cols': cols}
+                # Raise exception if project is not found
                 raise ProjectIdError()
         except (IOError, OSError, UnicodeError) as e:
             QtGui.QMessageBox.critical(self.ui.centralwidget,
                                        u"Config loading failed",
                                        u"Unable to read config file.\nReturned error is :\n%s" % e,
                                        QtGui.QMessageBox.Ok)
-            return []
+            return {'headers': {},
+                    'cols': {'type': "str",
+                             'decimals': 0,
+                             'values': {},
+                             'color': {},
+                             'visible': True}}
 
     def openFile(self, append=False):
         """
@@ -131,7 +179,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                 self.ui.toolBtnSave.setEnabled(True)
 
     def setModel(self):
-        self.model = LogReaderTableModel(self.header, self.ui.centralwidget)
+        self.model = LogReaderTableModel(self.parserConfig['headers'], self.ui.centralwidget)
         self.ui.tableView.setModel(self.model)
         
     def parseLogFile(self, filename):
@@ -160,7 +208,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                         if self.projectId == "":
                             self.projectId = line
                             try:
-                                self.header = self.getHeaders(line)
+                                self.parserConfig = self.getItemParserConfig(self.projectId)
                             except ProjectIdError:
                                 QtGui.QMessageBox.warning(self.ui.centralwidget,
                                                           u"Config cannot be found",
@@ -182,16 +230,28 @@ class HmiLogViewer(QtGui.QMainWindow):
                     if len(lineFields) == 3:
                         # Le message est composé de N champs séparés par des points-virgule
                         # -> on les extrait et contrôle que le nombre de champs est correct par rapport au header
-                        msgFields = lineFields[2].split(";")
-                        if len(msgFields) == len(self.header) - 1:
-                            try:
-                                items = [QtGui.QStandardItem((unicode(float(field)/10)))
-                                         if idx in range(3, 15) else
-                                         QtGui.QStandardItem(field)
-                                         for idx, field in enumerate(msgFields)]
-                            except (ValueError, UnicodeError):
-                                # Ignore current line in case of error
-                                continue
+                        msgFields = lineFields[2].strip(";").split(";")
+                        if len(msgFields) == len(self.parserConfig['headers']) - 1:
+                            items = []
+                            for field, fieldConfig in zip(msgFields, self.parserConfig['cols']):
+                                itemType = fieldConfig['type']
+                                decimals = fieldConfig['decimals']
+                                values = fieldConfig['values']
+                                color = fieldConfig['color']
+                                visible = fieldConfig['visible']
+
+                                if itemType == "float":
+                                    items.append(QtGui.QStandardItem((unicode(float(field)/10.0**decimals))))
+                                else:
+                                    if itemType == "int":
+                                        itemValue = int(field)
+                                    else:
+                                        itemValue = field
+
+                                    try:
+                                        items.append(QtGui.QStandardItem(unicode(values[itemValue])))
+                                    except KeyError:
+                                        items.append(QtGui.QStandardItem(unicode(itemValue)))
                             
                             # Add date and time values on the top of the list
                             items.insert(0, QtGui.QStandardItem(" ".join(lineFields[:-1])))
@@ -221,7 +281,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                 with open(str(sFilePath), "wb") as f:
                     writer = csv.writer(f, delimiter=";")
                     # Write headers
-                    writer.writerow([s.encode("cp1255") for s in self.header])
+                    writer.writerow([s.encode("cp1255") for s in self.parserConfig['headers']])
                     for row in xrange(self.model.rowCount()):
                         itemRow = ["%s" % self.model.item(row, col).data(QtCore.Qt.DisplayRole).toString()
                                    if col == 0 else
