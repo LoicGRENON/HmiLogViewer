@@ -185,6 +185,8 @@
     <addaction name="separator"/>
     <addaction name="actionClose"/>
     <addaction name="separator"/>
+    <addaction name="actionImportConfigFile"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
@@ -234,6 +236,11 @@
    </property>
    <property name="text">
     <string>Add file</string>
+   </property>
+  </action>
+  <action name="actionImportConfigFile">
+   <property name="text">
+    <string>Import config file</string>
    </property>
   </action>
  </widget>

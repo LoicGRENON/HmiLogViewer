@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'aboutDialog.ui'
 #
-# Created: Sat Nov 21 13:30:48 2015
+# Created: Thu Nov 26 20:19:02 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -114,8 +114,8 @@ class Ui_aboutDialog(object):
 
     def retranslateUi(self, aboutDialog):
         aboutDialog.setWindowTitle(_translate("aboutDialog", "About HmiLogViewer", None))
-        self.appNameVersion_label.setText(_translate("aboutDialog", "HmiLogViewer 1.0", None))
-        self.descriptionLabel.setText(_translate("aboutDialog", "<html><head/><body><p align=\"center\">HmiLogViewer is a viewer for the log data stored into the HMI</p></body></html>", None))
+        self.appNameVersion_label.setText(_translate("aboutDialog", "HmiLogViewer 2.0", None))
+        self.descriptionLabel.setText(_translate("aboutDialog", "<html><head/><body><p align=\"center\">HmiLogViewer is a viewer for the log data stored into the HMI touch panel</p></body></html>", None))
         self.copyrightLabel.setText(_translate("aboutDialog", "<html><head/><body><p>Copyright © 2015 - ERI Vallon</p><p>All rights reserved</p></body></html>", None))
         self.label_2.setText(_translate("aboutDialog", "<html><head/><body><p>Created by Loïc GRENON - <a href=\"mailto:l.grenon@erivallon.fr\"><span style=\" text-decoration: underline; color:#0000ff;\">l.grenon@erivallon.fr</span></a></p></body></html>", None))
 

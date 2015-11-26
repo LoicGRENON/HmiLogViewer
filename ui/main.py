@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'main.ui'
 #
-# Created: Sat Nov 21 13:30:41 2015
+# Created: Thu Nov 26 20:58:22 2015
 #      by: PyQt4 UI code generator 4.11.2
 #
 # WARNING! All changes made in this file will be lost!
@@ -120,12 +120,16 @@ class Ui_MainWindow(object):
         self.actionAddFile = QtGui.QAction(MainWindow)
         self.actionAddFile.setEnabled(False)
         self.actionAddFile.setObjectName(_fromUtf8("actionAddFile"))
+        self.actionImportConfigFile = QtGui.QAction(MainWindow)
+        self.actionImportConfigFile.setObjectName(_fromUtf8("actionImportConfigFile"))
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addAction(self.actionAddFile)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionSaveAs)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionClose)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionImportConfigFile)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionQuit)
         self.menuHelp.addAction(self.actionAbout)
@@ -149,6 +153,7 @@ class Ui_MainWindow(object):
         self.actionAbout.setText(_translate("MainWindow", "About", None))
         self.actionClose.setText(_translate("MainWindow", "Close", None))
         self.actionAddFile.setText(_translate("MainWindow", "Add file", None))
+        self.actionImportConfigFile.setText(_translate("MainWindow", "Import config file", None))
 
 from MyTableView import MyTableView
 import HmiLogViewer_rc

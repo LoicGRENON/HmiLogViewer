@@ -17,6 +17,7 @@ import sys
 import os
 import yaml
 import ast
+import shutil
 
 
 class HmiLogViewer(QtGui.QMainWindow):
@@ -31,7 +32,7 @@ class HmiLogViewer(QtGui.QMainWindow):
         self.parserConfig = {'headers': None,
                              'cols': None}
         self.projectId = ""
-        
+
         # Menu entries actions
         QtCore.QObject.connect(self.ui.actionOpen,
                                QtCore.SIGNAL("triggered()"),
@@ -45,6 +46,9 @@ class HmiLogViewer(QtGui.QMainWindow):
         QtCore.QObject.connect(self.ui.actionSaveAs,
                                QtCore.SIGNAL("triggered()"),
                                self.saveFile)
+        QtCore.QObject.connect(self.ui.actionImportConfigFile,
+                               QtCore.SIGNAL("triggered()"),
+                               self.importConfigFile)
         QtCore.QObject.connect(self.ui.actionAbout,
                                QtCore.SIGNAL("triggered()"),
                                self.aboutDialog.open)
@@ -67,63 +71,112 @@ class HmiLogViewer(QtGui.QMainWindow):
         """
         projectId = projectId.strip()
         try:
-            # TODO: Change file path
-            with open("config.yaml", "r") as f:
-                data = yaml.safe_load(f)
-                for d in data['LogData']:
-                    if projectId == d['projectId']:
-                        headers = ['Date']
-                        cols = []
-                        for item in d['items']:
-                            headers.append(u"{}\n({})".format(item['name'], item['unit'])
-                                           if item['unit'] else
-                                           u"{}".format(item['name']))
+            # First open the config file which is in the same directory than the executable
+            with open("HmiLogViewer.yaml", "r") as f:
+                return self.parseConfig(f, projectId)
+        except (IOError, OSError):
+            try:
+                with open(os.path.join(self.getConfigPath(), "HmiLogViewer.yaml"), "r") as f:
+                    return self.parseConfig(f, projectId)
+            except (IOError, OSError) as e:
+                QtGui.QMessageBox.critical(self.ui.centralwidget,
+                                           u"Config loading failed",
+                                           u"Unable to read config file.\nReturned error is :\n%s" % e,
+                                           QtGui.QMessageBox.Ok)
+                return {'headers': {},
+                        'cols': {'decimals': 0,
+                                 'values': {},
+                                 'color': {},
+                                 'visible': True}}
 
-                            try:
-                                decimals = item['decimals']
-                            except KeyError:
-                                decimals = 0
+    def parseConfig(self, fp, projectId):
+        """
+        Parse config file for the projectId
+        :param fp: file object
+        :param projectId: str
+        :return: dict
+        """
+        data = yaml.safe_load(fp)
+        for d in data['LogData']:
+            if projectId == d['projectId']:
+                headers = ['Date']
+                cols = []
+                for item in d['items']:
+                    headers.append(u"{}\n({})".format(item['name'], item['unit'])
+                                   if item['unit'] else
+                                   u"{}".format(item['name']))
 
-                            try:
-                                values = ast.literal_eval(item['values'])
-                            except (KeyError, ValueError, SyntaxError):
-                                values = {}
+                    try:
+                        decimals = item['decimals']
+                    except KeyError:
+                        decimals = 0
 
-                            try:
-                                color = ast.literal_eval(item['color'])
-                            except (KeyError, ValueError, SyntaxError):
-                                color = {}
+                    try:
+                        values = ast.literal_eval(item['values'])
+                    except (KeyError, ValueError, SyntaxError):
+                        values = {}
 
-                            try:
-                                visible = item['visible']
-                            except KeyError:
-                                visible = True
+                    try:
+                        color = ast.literal_eval(item['color'])
+                    except (KeyError, ValueError, SyntaxError):
+                        color = {}
 
-                            cols.append({'decimals': decimals,
-                                         'values': values,
-                                         'color': color,
-                                         'visible': visible})
-                        return {'headers': headers,
-                                'cols': cols}
-                # Raise exception if project is not found
-                raise ProjectIdError()
-        except (IOError, OSError, UnicodeError) as e:
-            QtGui.QMessageBox.critical(self.ui.centralwidget,
-                                       u"Config loading failed",
-                                       u"Unable to read config file.\nReturned error is :\n%s" % e,
-                                       QtGui.QMessageBox.Ok)
-            return {'headers': {},
-                    'cols': {'decimals': 0,
-                             'values': {},
-                             'color': {},
-                             'visible': True}}
+                    try:
+                        visible = item['visible']
+                    except KeyError:
+                        visible = True
+
+                    cols.append({'decimals': decimals,
+                                 'values': values,
+                                 'color': color,
+                                 'visible': visible})
+                return {'headers': headers,
+                        'cols': cols}
+        # Raise exception if project is not found
+        raise ProjectIdError()
+
+    def getConfigPath(self):
+        dirname = os.path.join("EriVallon", "HmiLogViewer")
+        if 'ALLUSERSPROFILE' in os.environ:
+            try:
+                from win32com.shell import shellcon, shell
+                appdata_path = shell.SHGetFolderPath(0, shellcon.CSIDL_COMMON_APPDATA, 0, 0)
+            except ImportError:
+                appdata_path = os.environ['ALLUSERSPROFILE']
+            return os.path.join(appdata_path, dirname)
+        elif 'XDG_CONFIG_HOME' in os.environ:
+            return os.path.join(os.environ['XDG_CONFIG_HOME'], dirname)
+        else:
+            return os.path.join(os.environ['HOME'], '.config', dirname)
+
+    def importConfigFile(self):
+        sFilePath = QtGui.QFileDialog.getOpenFileName(self.ui.centralwidget,
+                                                      u"Choose a config file to import",
+                                                      QtCore.QString(),
+                                                      "YAML config file (*.yaml)")
+        if os.path.isfile(sFilePath):
+            r = QtGui.QMessageBox.warning(self.ui.centralwidget,
+                                          u"Load config file",
+                                          u"You are about to load a new config file located at : %s\n\n"
+                                          u"Make sure you have selected a correct config file, "
+                                          u"incorrect file may result in a non-functional application." % sFilePath,
+                                          QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel,
+                                          QtGui.QMessageBox.Cancel)
+            if r == QtGui.QMessageBox.Ok:
+                configPath = self.getConfigPath()
+                if not os.path.exists(configPath):
+                    os.makedirs(configPath)
+                shutil.copy(sFilePath, os.path.join(configPath, "HmiLogViewer.yaml"))
 
     def openFile(self, append=False):
         """
-        Ouvrir un fichier CSV
+        Open a csv file
         :param append: Do not close previous file if True
         """
-        sFilePath = self.openFileDialog()
+        sFilePath = QtGui.QFileDialog.getOpenFileName(self.ui.centralwidget,
+                                                      u"Choose a log file",
+                                                      QtCore.QString(),
+                                                      "CSV (*.csv)")
         if os.path.isfile(sFilePath):
             if not append:
                 self.closeFile()
@@ -133,12 +186,6 @@ class HmiLogViewer(QtGui.QMainWindow):
             self.ui.toolBtnAppend.setEnabled(True)
             self.ui.actionSaveAs.setEnabled(True)
             self.ui.toolBtnSave.setEnabled(True)
-        
-    def openFileDialog(self):
-        return QtGui.QFileDialog.getOpenFileName(self.ui.centralwidget,
-                                                 u"Choose a log file",
-                                                 QtCore.QString(),
-                                                 "CSV (*.csv)")
             
     def closeFile(self):
         """
@@ -253,7 +300,7 @@ class HmiLogViewer(QtGui.QMainWindow):
                             items.insert(0, QtGui.QStandardItem(" ".join(lineFields[:-1])))
                             # Add extra row for aesthetic reasons
                             items.append(QtGui.QStandardItem())
-                                
+
                             self.model.appendRow(items)
         except (IOError, OSError, UnicodeError) as e:
             QtGui.QMessageBox.critical(self.ui.centralwidget,

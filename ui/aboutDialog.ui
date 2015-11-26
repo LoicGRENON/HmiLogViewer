@@ -43,7 +43,7 @@
       </font>
      </property>
      <property name="text">
-      <string>HmiLogViewer 1.0</string>
+      <string>HmiLogViewer 2.0</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignCenter</set>
@@ -64,7 +64,7 @@
       </font>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;HmiLogViewer is a viewer for the log data stored into the HMI&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;HmiLogViewer is a viewer for the log data stored into the HMI touch panel&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="scaledContents">
       <bool>false</bool>
